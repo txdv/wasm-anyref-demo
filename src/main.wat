@@ -64,49 +64,49 @@
 
 (module
   (import "env" "memory" (memory $memory 1))
-  (import "env" "anyref_table" (table $anyref_table 2 anyref))
+  (import "env" "anyref_table" (table $anyref_table 2 externref))
   (;
     struct User {
       name: string, // offset: (i32.const 0)
       age: i32      // offset: (i32.const 1)
     }
   ;)
-  (import "env" "alloc_struct2" (func $User (param anyref) (param i32) (result anyref)))
+  (import "env" "alloc_struct2" (func $User (param externref) (param i32) (result externref)))
   (;
     struct Comment {
       user: User,      // offset: (i32.const 0)
       content: string  // offset: (i32.const 1)
     }
   ;)
-  (import "env" "alloc_struct2" (func $Comment (param anyref) (param anyref) (result anyref)))
-  (import "env" "get" (func $get (param anyref) (param i32) (result anyref)))
-  (import "env" "log" (func $log (param anyref)))
+  (import "env" "alloc_struct2" (func $Comment (param externref) (param externref) (result externref)))
+  (import "env" "get" (func $get (param externref) (param i32) (result externref)))
+  (import "env" "log" (func $log (param externref)))
 
   (func $main (export "main")
-    (local $name anyref)
+    (local $name externref)
     (local $age i32)
-    (local $user anyref)
-    (local $content anyref)
-    (local $comment anyref)
+    (local $user externref)
+    (local $content externref)
+    (local $comment externref)
 
     (; === User creation ===
        ===================== ;)
 
     (; name is a GC reference string coming from the imported table ;)
-    (set_local $name
+    (local.set $name
       (table.get $anyref_table
         (i32.const 0)
       )
     )
     (; we use Wasm integers instead of JS numbers for ease/perf ;)
-    (set_local $age
+    (local.set $age
       (i32.const 50)
     )
     (; creating a garbage collected "tuple" struct ;)
-    (set_local $user
+    (local.set $user
       (call $User
-        (get_local $name)
-        (get_local $age)
+        (local.get $name)
+        (local.get $age)
       )
     )
 
@@ -114,24 +114,24 @@
        ======================== ;)
 
     (; name is a GC reference string coming from the imported table ;)
-    (set_local $content
+    (local.set $content
       (table.get $anyref_table
         (i32.const 1)
       )
     )
 
     (; GC record that contains even more GC records ;)
-    (set_local $comment
+    (local.set $comment
       (call $Comment
-        (get_local $user)
-        (get_local $content)
+        (local.get $user)
+        (local.get $content)
       )
     )
 
     (; see how the entire data structure is stored ;)
     (; [['Some Name', 50], 'Example comment text'] ;)
     (call $log
-      (get_local $comment)
+      (local.get $comment)
     )
 
     (; === peek at individual fields ===
@@ -141,7 +141,7 @@
     (; "Example comment text" ;)
     (call $log
       (call $get
-        (get_local $comment)
+        (local.get $comment)
         (i32.const 1)
       )
     )
@@ -151,7 +151,7 @@
     (call $log
       (call $get
         (call $get
-          (get_local $comment)
+          (local.get $comment)
           (; get the user ;)
           (i32.const 0)
         )
